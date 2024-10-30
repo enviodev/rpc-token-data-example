@@ -22,8 +22,8 @@
 type Token {
   id: ID! #address
   name: String!
-  Symbol: String!
-  Decimals: Int!
+  symbol: String!
+  decimals: Int!
 }
 
 type Pool {
