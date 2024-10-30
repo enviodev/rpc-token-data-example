@@ -4,9 +4,12 @@ import { Cache, CacheCategory } from "./cache";
 import { getRpcUrl } from './utils';
 const erc20ABI = require("./ERC20.json");
 
+// get api key
+const apiKey = process.env.ALCHEMY_API_KEY;
+
 const client = createPublicClient({ 
   chain: mainnet, 
-  transport: http('https://eth-mainnet.g.alchemy.com/v2/ajCKOdS13oIjMV9BlDqdFJUZOve2Oth3'), 
+  transport: http(`https://eth-mainnet.g.alchemy.com/v2/${apiKey}`), 
 }) 
 
 export async function getTokenDetails(
