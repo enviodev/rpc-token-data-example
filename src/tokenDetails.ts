@@ -1,16 +1,15 @@
-import { createPublicClient, http } from 'viem'
+import { createPublicClient, getContract, http } from 'viem'
 import { mainnet } from 'viem/chains'
-import { Cache, CacheCategory } from "./cache"; 
-import { getRpcUrl } from './utils';
-const erc20ABI = require("./ERC20.json");
+import { Cache, CacheCategory } from "./cache";
+import { ERC20ABI } from './constants';
 
-// get api key
 const apiKey = process.env.ALCHEMY_API_KEY;
 
-const client = createPublicClient({ 
-  chain: mainnet, 
-  transport: http(`https://eth-mainnet.g.alchemy.com/v2/${apiKey}`), 
-}) 
+const client = createPublicClient({
+  chain: mainnet,
+  transport: http(`https://eth-mainnet.g.alchemy.com/v2/${apiKey}`),
+  batch: { multicall: true }
+})
 
 export async function getTokenDetails(
   contractAddress: string,
@@ -27,26 +26,19 @@ export async function getTokenDetails(
     return token;
   }
 
-  // RPC URL
-  // const rpcURL = getRpcUrl();
+  const contract = getContract({
+    address: contractAddress as `0x${string}`,
+    abi: ERC20ABI,
+    client: { public: client },
+  });
 
-  console.log("attempting to get")
-  console.log(erc20ABI)
   try {
-    const name = await client.readContract({ 
-      ...erc20ABI, 
-      functionName: 'name',
-    })
-    console.log("got name", name)
-    const symbol = await client.readContract({
-      ...erc20ABI,
-      functionName: 'symbol',
-    })
-  
-    const decimals = await client.readContract({
-      ...erc20ABI,
-      functionName: 'decimals',
-    })
+    const [name, symbol, decimals] = await Promise.all([
+      contract.read.name(),
+      contract.read.symbol(),
+      contract.read.decimals(),
+    ]);
+    console.log(`symbol ${symbol} decimals ${decimals} name ${name}`);
 
     const entry = {
       name: name?.toString() || "",
@@ -54,13 +46,10 @@ export async function getTokenDetails(
       decimals: decimals as number,
     } as const;
 
-    console.log("got")
-
-    cache.add({ [contractAddress.toLowerCase()]: entry as any});
+    cache.add({ [contractAddress.toLowerCase()]: entry as any });
 
     return entry;
   } catch (err) {
-    console.error("An error occurred for token ", contractAddress, err);
-    throw err
+    throw err;
   }
 }
