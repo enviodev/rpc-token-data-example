@@ -1,19 +1,20 @@
-import { createPublicClient, getContract, http } from 'viem'
+import { createPublicClient, http, hexToString } from 'viem'
 import { mainnet } from 'viem/chains'
 import { Cache, CacheCategory } from "./cache";
-import { ERC20ABI } from './constants';
+import { getERC20BytesContract, getERC20Contract } from './utils';
 
-const apiKey = process.env.ALCHEMY_API_KEY;
+const RPC_URL = process.env.RPC_URL;
 
 const client = createPublicClient({
   chain: mainnet,
-  transport: http(`https://eth-mainnet.g.alchemy.com/v2/${apiKey}`),
+  transport: http(RPC_URL),
   batch: { multicall: true }
 })
 
 export async function getTokenDetails(
   contractAddress: string,
-  chainId: number
+  chainId: number,
+  pool: string,
 ): Promise<{
   readonly name: string,
   readonly symbol: string,
@@ -26,30 +27,69 @@ export async function getTokenDetails(
     return token;
   }
 
-  const contract = getContract({
-    address: contractAddress as `0x${string}`,
-    abi: ERC20ABI,
-    client: { public: client },
-  });
+  const erc20 = getERC20Contract(contractAddress as `0x${string}`);
+  const erc20Bytes = getERC20BytesContract(contractAddress as `0x${string}`);
 
+  let results: [number, string, string];
   try {
-    const [name, symbol, decimals] = await Promise.all([
-      contract.read.name(),
-      contract.read.symbol(),
-      contract.read.decimals(),
-    ]);
-    console.log(`symbol ${symbol} decimals ${decimals} name ${name}`);
-
-    const entry = {
-      name: name?.toString() || "",
-      symbol: symbol?.toString() || "",
-      decimals: decimals as number,
-    } as const;
-
-    cache.add({ [contractAddress.toLowerCase()]: entry as any });
-
-    return entry;
-  } catch (err) {
-    throw err;
+    results = await client.multicall({
+      allowFailure: false,
+      contracts: [
+        {
+          ...erc20,
+          functionName: "decimals",
+        },
+        {
+          ...erc20,
+          functionName: "name",
+        },
+        {
+          ...erc20,
+          functionName: "symbol",
+        },
+      ],
+    });
+  } catch (error) {
+    console.log("First multicall failed, trying alternate method");
+    try {
+      const alternateResults = await client.multicall({
+        allowFailure: false,
+        contracts: [
+          {
+            ...erc20Bytes,
+            functionName: "decimals",
+          },
+          {
+            ...erc20Bytes,
+            functionName: "name",
+          },
+          {
+            ...erc20Bytes,
+            functionName: "symbol",
+          },
+        ],
+      });
+      results = [
+        alternateResults[0],
+        hexToString(alternateResults[1]),
+        hexToString(alternateResults[2]),
+      ];
+    } catch (alternateError) {
+      console.error(`Alternate method failed for pool ${pool}:`, alternateError);
+      throw alternateError;
+    }
   }
+
+  const [decimals, name, symbol] = results;
+  
+  console.log(`Got token details for ${contractAddress}: ${name} (${symbol}) with ${decimals} decimals`);
+
+  const entry = {
+    name,
+    symbol,
+    decimals
+  } as const;
+
+  cache.add({ [contractAddress.toLowerCase()]: entry as any });
+  return entry;
 }

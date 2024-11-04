@@ -20,7 +20,7 @@ UniswapV3Factory.PoolCreated.handler(async ({ event, context }) => {
 
 
   try {
-    const {name: name0, symbol: symbol0, decimals: decimals0} = await getTokenDetails(event.params.token0, event.chainId);
+    const {name: name0, symbol: symbol0, decimals: decimals0} = await getTokenDetails(event.params.token0, event.chainId, event.params.pool);
     context.Token.set({
       id: event.params.token0,
       name: name0,
@@ -28,12 +28,12 @@ UniswapV3Factory.PoolCreated.handler(async ({ event, context }) => {
       decimals: decimals0
     })
   } catch (error) {
-    console.log(error)
+    console.log('failed token0 with address', event.params.token0)
     return
   }
 
   try {
-    const {name: name1, symbol: symbol1, decimals: decimals1} = await getTokenDetails(event.params.token0, event.chainId);
+    const {name: name1, symbol: symbol1, decimals: decimals1} = await getTokenDetails(event.params.token1, event.chainId, event.params.pool);
     context.Token.set({
       id: event.params.token1,
       name: name1,
@@ -41,7 +41,7 @@ UniswapV3Factory.PoolCreated.handler(async ({ event, context }) => {
       decimals: decimals1,
     })
   } catch (error) {
-    console.log(error)
+    console.log('failed token1 with address', event.params.token1)
     return
   }
 });
