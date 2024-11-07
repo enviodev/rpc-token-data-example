@@ -71,12 +71,12 @@ export async function getTokenDetails(
       });
       results = [
         alternateResults[0],
-        hexToString(alternateResults[1]),
-        hexToString(alternateResults[2]),
+        hexToString(alternateResults[1]).replace(/\u0000/g, ''),
+        hexToString(alternateResults[2]).replace(/\u0000/g, ''),
       ];
     } catch (alternateError) {
-      console.error(`Alternate method failed for pool ${pool}:`, alternateError);
-      throw alternateError;
+      console.error(`Alternate method failed for pool ${pool}:`);
+      results = [0,"unknown","unknown"];
     }
   }
 
