@@ -2,7 +2,7 @@
 name: uniswap-v3-factory-token-indexer
 networks:
 - id: 1
-  start_block: 21000000
+  start_block: 0
   contracts:
   - name: UniswapV3Factory
     address:
